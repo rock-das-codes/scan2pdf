@@ -1,18 +1,12 @@
 import React, { useState, useRef, type DragEvent, type ChangeEvent } from 'react';
-import { Upload, FileImage, X, Check } from 'lucide-react';
-import { createWorker } from 'tesseract.js';
-
-interface FileUploadState {
-  isDragOver: boolean;
-  selectedFile: File | null;
-  isUploading: boolean;
-}
-const formData = new FormData();
+import { Upload, FileImage, X, Check, Copy, Download } from 'lucide-react';
 
 const DataXtract: React.FC = () => {
   const [isDragOver, setIsDragOver] = useState<boolean>(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [ocrResult, setOcrResult] = useState<string | null>(null);
+  const [copySuccess, setCopySuccess] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>): void => {
@@ -51,6 +45,8 @@ const DataXtract: React.FC = () => {
 
   const handleRemoveFile = (): void => {
     setSelectedFile(null);
+    setOcrResult(null);
+    setCopySuccess(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -58,32 +54,57 @@ const DataXtract: React.FC = () => {
 
   const handleExtractData = async (): Promise<void> => {
     if (!selectedFile) return;
-//     const worker = await createWorker('eng');
-//     setIsUploading(true);
-//     // Simulate processing time
-//     await new Promise<void>(resolve => setTimeout(resolve, 2000));
-//     setIsUploading(false);
-//     (async () => {
-//   const { data: { text } } = await worker.recognize(selectedFile);
-//   console.log(text);
-//   await worker.terminate();
-// })();
-//     // Here you would typically send the file to your backend
-//     console.log('Extracting data from:', selectedFile.name);
-formData.append("image", selectedFile);
-fetch("https://obscure-space-doodle-5p6q7x5xgw9cpxqr-5000.app.github.dev/ocr", {
-  method: "POST",
-  body: selectedFile,
-  headers: {
-    cors: "allow",
-  },
+    
+    setIsUploading(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append("image", selectedFile);
+      
+      const response = await fetch(`https://obscure-space-doodle-5p6q7x5xgw9cpxqr-5000.app.github.dev/ocr?cb=${Date.now()}`, {
+        method: "POST",
+        body: formData,
+      });
+      
+      const data = await response.json();
+      console.log("OCR result:", data);
+      
+      // Assuming the API returns text in data.text or data.result
+      const extractedText = data.text || data.result || data.extracted_text || JSON.stringify(data, null, 2);
+      setOcrResult(extractedText);
+      
+    } catch (error) {
+      console.error("Error extracting data:", error);
+      setOcrResult("Error occurred while extracting data. Please try again.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
-}).then(res => res.json())
-  .then(data => {
-    console.log("OCR result:", data.text);
-  });
+  const handleCopyText = async (): Promise<void> => {
+    if (!ocrResult) return;
+    
+    try {
+      await navigator.clipboard.writeText(ocrResult);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy text:", error);
+    }
+  };
 
-
+  const handleDownloadText = (): void => {
+    if (!ocrResult) return;
+    
+    const blob = new Blob([ocrResult], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `extracted-text-${Date.now()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -253,31 +274,91 @@ fetch("https://obscure-space-doodle-5p6q7x5xgw9cpxqr-5000.app.github.dev/ocr", {
             </div>
           </div>
 
-          {/* Features Section */}
-          <div className="mt-16 sm:mt-20">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-              <FeatureCard
-                icon={<FileImage className="w-6 h-6 text-blue-600 dark:text-blue-400" />}
-                title="Smart Recognition"
-                description="Advanced AI algorithms to accurately extract text and data from images"
-                bgColor="bg-blue-100 dark:bg-blue-900/30"
-              />
-
-              <FeatureCard
-                icon={<Upload className="w-6 h-6 text-green-600 dark:text-green-400" />}
-                title="Easy Upload"
-                description="Drag and drop or browse to upload your images quickly and securely"
-                bgColor="bg-green-100 dark:bg-green-900/30"
-              />
-
-              <FeatureCard
-                icon={<Check className="w-6 h-6 text-purple-600 dark:text-purple-400" />}
-                title="Instant Results"
-                description="Get extracted data in seconds with high accuracy and formatting"
-                bgColor="bg-purple-100 dark:bg-purple-900/30"
-              />
+          {/* OCR Results Section */}
+          {ocrResult && (
+            <div className="mt-12 max-w-4xl mx-auto">
+              <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                {/* Results Header */}
+                <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                        <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
+                          Extracted Text
+                        </h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          Text extracted from your image
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={handleCopyText}
+                        className="inline-flex items-center px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                      >
+                        <Copy className="w-4 h-4 mr-1" />
+                        {copySuccess ? 'Copied!' : 'Copy'}
+                      </button>
+                      <button
+                        onClick={handleDownloadText}
+                        className="inline-flex items-center px-3 py-2 text-sm bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors font-medium"
+                      >
+                        <Download className="w-4 h-4 mr-1" />
+                        Download
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Results Content */}
+                <div className="p-6">
+                  <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 border border-slate-200 dark:border-slate-600">
+                    <pre className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300 font-mono leading-relaxed max-h-96 overflow-y-auto">
+                      {ocrResult}
+                    </pre>
+                  </div>
+                  
+                  {/* Text Statistics */}
+                  <div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-600 dark:text-slate-400">
+                    <span>Characters: {ocrResult.length}</span>
+                    <span>Words: {ocrResult.trim().split(/\s+/).length}</span>
+                    <span>Lines: {ocrResult.split('\n').length}</span>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Features Section */}
+          {!ocrResult && (
+            <div className="mt-16 sm:mt-20">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+                <FeatureCard
+                  icon={<FileImage className="w-6 h-6 text-blue-600 dark:text-blue-400" />}
+                  title="Smart Recognition"
+                  description="Advanced AI algorithms to accurately extract text and data from images"
+                  bgColor="bg-blue-100 dark:bg-blue-900/30"
+                />
+
+                <FeatureCard
+                  icon={<Upload className="w-6 h-6 text-green-600 dark:text-green-400" />}
+                  title="Easy Upload"
+                  description="Drag and drop or browse to upload your images quickly and securely"
+                  bgColor="bg-green-100 dark:bg-green-900/30"
+                />
+
+                <FeatureCard
+                  icon={<Check className="w-6 h-6 text-purple-600 dark:text-purple-400" />}
+                  title="Instant Results"
+                  description="Get extracted data in seconds with high accuracy and formatting"
+                  bgColor="bg-purple-100 dark:bg-purple-900/30"
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
