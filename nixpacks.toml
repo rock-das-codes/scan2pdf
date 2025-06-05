@@ -1,8 +1,10 @@
 [phases.setup]
 nixPkgs = ["python311", "tesseract"]
-
+providers = ["...", "python"]
 [phases.install]
-cmds = ["python3 -m pip install -r backend/requirements.txt"]
+nixPkgs = ["...","flask","flask_cors"]
+aptPkgs = ["...","pytesseract"]
+aptPkgs = ["...","opencv"]
 
 [start]
 cmd = "python backend/app.py"
