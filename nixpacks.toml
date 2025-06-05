@@ -1,15 +1,5 @@
 [phases.setup]
-nixPkgs = [
-    "python311Full",
-    "tesseract", 
-    "pkg-config",
-    "libffi",
-    "openssl",
-    "gcc"
-]
-
-[phases.install]
-cmds = ["python3 -m pip install -r backend/requirements.txt"]
+nixPkgs = ["tesseract"]
 
 [start]
 cmd = "python backend/app.py"
