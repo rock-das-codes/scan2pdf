@@ -1,5 +1,14 @@
-Flask==2.3.3
-flask-cors==4.0.0
-opencv-python-headless==4.8.1.78
+# Core dependencies with version constraints
+numpy<2.0.0
+opencv-python-headless==4.10.0.84
 pytesseract==0.3.10
-Werkzeug==2.3.7
+Pillow==10.4.0
+
+# Flask dependencies
+Flask==3.0.3
+flask-cors==4.0.1
+Werkzeug==3.0.3
+
+# Optional: Add specific versions if needed
+# scipy==1.13.1
+# matplotlib==3.9.0
