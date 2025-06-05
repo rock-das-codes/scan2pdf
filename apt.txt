@@ -1,2 +1,5 @@
-tesseract-ocr
+
 libglib2.0-0
+tesseract-ocr
+tesseract-ocr-eng
+libtesseract-dev
