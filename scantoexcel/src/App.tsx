@@ -61,7 +61,7 @@ const DataXtract: React.FC = () => {
       const formData = new FormData();
       formData.append("image", selectedFile);
       
-      const response = await fetch(`https://obscure-space-doodle-5p6q7x5xgw9cpxqr-5000.app.github.dev/ocr?cb=${Date.now()}`, {
+      const response = await fetch(`https://scan2pdf-production.up.railway.app/ocr?cb=${Date.now()}`, {
         method: "POST",
         body: formData,
       });

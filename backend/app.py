@@ -7,9 +7,15 @@ import re
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, 
+     origins=["*"],  # Allow all origins, or specify your frontend URL
+     methods=["GET", "POST", "PUT", "DELETE"],
+     allow_headers=["Content-Type", "Authorization"]
+)
 UPLOAD_FOLDER = "uploads"
-
+@app.route('/')
+def hello():
+    return "Hello World!"
 
 @app.route("/ocr", methods=["POST"])
 def extract_text():
@@ -58,5 +64,5 @@ def extract_text():
 
     return jsonify({ "lines": cleaned_lines })
 
-if __name__ == "__main__":
-    app.run(debug=True)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=False)
