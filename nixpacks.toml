@@ -1,20 +1,16 @@
 [phases.setup]
 nixPkgs = [
     "python311", 
-    "tesseract", 
+    "python311Packages.pip",
+    "tesseract",
     "pkg-config",
     "libffi",
     "openssl",
-    "gcc",
-    "glib",
-    "glibc"
+    "gcc"
 ]
 
 [phases.install]
-cmds = [
-    "python3 -m pip install --upgrade pip",
-    "python3 -m pip install -r backend/requirements.txt"
-]
+cmds = ["python3 -m pip install -r backend/requirements.txt"]
 
 [start]
 cmd = "python backend/app.py"
