@@ -1,2 +1,8 @@
 [phases.setup]
 nixPkgs = ["tesseract"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[start]
+cmd = "python backend/app.py"
