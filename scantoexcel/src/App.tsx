@@ -1,5 +1,13 @@
 import React, { useState, useRef, type DragEvent, type ChangeEvent } from 'react';
 import { Upload, FileImage, X, Check, Copy, Download } from 'lucide-react';
+import { utils as XLSXUtils, write as XLSXWrite } from 'xlsx';
+
+interface TableData {
+  html: {
+    [key: string]: string;
+  };
+  type: string;
+}
 
 const DataXtract: React.FC = () => {
   const [isDragOver, setIsDragOver] = useState<boolean>(false);
@@ -7,6 +15,7 @@ const DataXtract: React.FC = () => {
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [ocrResult, setOcrResult] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState<boolean>(false);
+  const [tableHTML, setTableHTML] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>): void => {
@@ -54,14 +63,13 @@ const DataXtract: React.FC = () => {
 
   const handleExtractData = async (): Promise<void> => {
     if (!selectedFile) return;
-    
     setIsUploading(true);
     
     try {
       const formData = new FormData();
       formData.append("image", selectedFile);
       
-      const response = await fetch(`https://scan2pdf-production.up.railway.app/ocr?cb=${Date.now()}`, {
+      const response = await fetch(`https://obscure-space-doodle-5p6q7x5xgw9cpxqr-5000.app.github.dev/ocr?cb=${Date.now()}`, {
         method: "POST",
         body: formData,
       });
@@ -69,9 +77,10 @@ const DataXtract: React.FC = () => {
       const data = await response.json();
       console.log("OCR result:", data);
       
-      // Assuming the API returns text in data.text or data.result
-      const extractedText = data.text || data.result || data.extracted_text || JSON.stringify(data, null, 2);
-      setOcrResult(extractedText);
+      if (data.tables?.[0]?.html?.table_1) {
+        setTableHTML(data.tables[0].html.table_1);
+        setOcrResult(JSON.stringify(data.tables[0], null, 2));
+      }
       
     } catch (error) {
       console.error("Error extracting data:", error);
@@ -105,6 +114,39 @@ const DataXtract: React.FC = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadExcel = (): void => {
+    if (!tableHTML) return;
+
+    try {
+      // Create a temporary div to parse HTML
+      const div = document.createElement('div');
+      div.innerHTML = tableHTML;
+      const table = div.querySelector('table');
+
+      if (!table) return;
+
+      // Convert table to worksheet
+      const worksheet = XLSXUtils.table_to_sheet(table);
+      const workbook = XLSXUtils.book_new();
+      XLSXUtils.book_append_sheet(workbook, worksheet, 'Sheet1');
+
+      // Generate Excel file
+      const excelBuffer = XLSXWrite(workbook, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `extracted-table-${Date.now()}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error creating Excel file:', error);
+    }
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -145,6 +187,31 @@ const DataXtract: React.FC = () => {
       <p className="text-slate-600 dark:text-slate-400 text-sm">
         {description}
       </p>
+    </div>
+  );
+
+  const renderResults = () => (
+    <div className="p-6">
+      {tableHTML ? (
+        <>
+          <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 border border-slate-200 dark:border-slate-600 overflow-x-auto">
+            <div dangerouslySetInnerHTML={{ __html: tableHTML }} />
+          </div>
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              onClick={handleDownloadExcel}
+              className="inline-flex items-center px-3 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium"
+            >
+              <Download className="w-4 h-4 mr-1" />
+              Download Excel
+            </button>
+          </div>
+        </>
+      ) : (
+        <pre className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300 font-mono leading-relaxed max-h-96 overflow-y-auto">
+          {ocrResult}
+        </pre>
+      )}
     </div>
   );
 
@@ -315,18 +382,26 @@ const DataXtract: React.FC = () => {
                 
                 {/* Results Content */}
                 <div className="p-6">
-                  <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 border border-slate-200 dark:border-slate-600">
+                  {tableHTML ? (
+                    <>
+                      <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 border border-slate-200 dark:border-slate-600 overflow-x-auto">
+                        <div dangerouslySetInnerHTML={{ __html: tableHTML }} />
+                      </div>
+                      <div className="mt-4 flex justify-end gap-2">
+                        <button
+                          onClick={handleDownloadExcel}
+                          className="inline-flex items-center px-3 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium"
+                        >
+                          <Download className="w-4 h-4 mr-1" />
+                          Download Excel
+                        </button>
+                      </div>
+                    </>
+                  ) : (
                     <pre className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300 font-mono leading-relaxed max-h-96 overflow-y-auto">
                       {ocrResult}
                     </pre>
-                  </div>
-                  
-                  {/* Text Statistics */}
-                  <div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-600 dark:text-slate-400">
-                    <span>Characters: {ocrResult.length}</span>
-                    <span>Words: {ocrResult.trim().split(/\s+/).length}</span>
-                    <span>Lines: {ocrResult.split('\n').length}</span>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
